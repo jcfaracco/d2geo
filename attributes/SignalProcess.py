@@ -221,7 +221,8 @@ class SignalProcess():
         result : Dask Array
         """
         
-        darray, chunks_init = self.create_array(darray, preview=preview)        
+        darray, chunks_init = self.create_array(darray, kernel=None,
+                                                preview=preview)
         z_ind = da.ones(darray.shape, chunks=darray.chunks).cumsum(axis=-1)
         gain = (1 + z_ind) ** gain_val
         
