@@ -29,6 +29,22 @@ class NoiseReduction():
     convolution
     """
     
+    def __init__(self, *args, **kwargs):
+        """
+        Description
+        -----------
+        Constructor of the NoiseReduction object
+
+        Parameters
+        ----------
+        args : Array-like, positional parameters in array format
+        kwargs : Dict-like, positional parameters in dict format
+        """
+        if "numpy_backend" in kwargs:
+            self.xp = kwargs["numpy_backend"]
+        if "hilbert_callback" in kwargs:
+            self.hilbert = kwargs["hilbert_callback"]
+    
     def create_array(self, darray, kernel, preview):
         """
         Description
@@ -73,8 +89,8 @@ class NoiseReduction():
                 
         return(darray, chunks_init)
         
-        
-    def gaussian(self, darray, sigmas=(1, 1, 1), preview=None):
+    @util.check_numpy
+    def gaussian(self, darray, sigmas=(1, 1, 1), kernel=None, preview=None):
         """
         Description
         -----------
@@ -87,6 +103,7 @@ class NoiseReduction():
         Keywork Arguments
         -----------------  
         sigmas : tuple (len 3), smoothing parameters in I, J, K
+        kernel : tuple (len 3), operator size
         preview : str, enables or disables preview mode and specifies direction
             Acceptable inputs are (None, 'inline', 'xline', 'z')
             Optimizes chunk size in different orientations to facilitate rapid
@@ -98,10 +115,11 @@ class NoiseReduction():
         """
         
         # Generate Dask Array as necessary and perform algorithm
-        kernel = tuple((np.array(sigmas) * 2.5).astype(int))        
-        darray, chunks_init = self.create_array(darray, kernel, preview=preview)        
+        if not kernel:
+            kernel = tuple((self.xp.array(sigmas) * 2.5).astype(int))
+        darray, chunks_init = self.create_array(darray, kernel, preview=preview)
         result = darray.map_blocks(ndi.gaussian_filter, sigma=sigmas, dtype=darray.dtype)
-        result = util.trim_dask_array(result, kernel)        
+        result = util.trim_dask_array(result, kernel)
         result[da.isnan(result)] = 0
         
         return(result)

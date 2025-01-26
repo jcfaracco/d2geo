@@ -31,6 +31,20 @@ class DipAzm():
     gst_3D_dip
     gst_3D_azm
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Description
+        -----------
+        Constructor of the DipAzm object
+
+        Parameters
+        ----------
+        args : Array-like, positional parameters in array format
+        kwargs : Dict-like, positional parameters in dict format
+        """
+        if "numpy_backend" in kwargs:
+            self.xp = kwargs["numpy_backend"]
     
     def create_array(self, darray, kernel=None, preview=None):
         """
@@ -104,9 +118,9 @@ class DipAzm():
         darray, chunks_init = self.create_array(darray, kernel=None, preview=preview)
         
         # Compute I, J, K gradients
-        gi = sp().first_derivative(darray, axis=0)
-        gj = sp().first_derivative(darray, axis=1)
-        gk = sp().first_derivative(darray, axis=2)
+        gi = sp(**self.__dict__).first_derivative(darray, axis=0)
+        gj = sp(**self.__dict__).first_derivative(darray, axis=1)
+        gk = sp(**self.__dict__).first_derivative(darray, axis=2)
         
         # Compute dips
         il_dip = -(gi / gk) * dip_factor
@@ -153,9 +167,9 @@ class DipAzm():
         darray, chunks_init = self.create_array(darray, kernel, preview=preview)
         
         # Compute I, J, K gradients
-        gi = sp().first_derivative(darray, axis=0)
-        gj = sp().first_derivative(darray, axis=1)
-        gk = sp().first_derivative(darray, axis=2)        
+        gi = sp(**self.__dict__).first_derivative(darray, axis=0)
+        gj = sp(**self.__dict__).first_derivative(darray, axis=1)
+        gk = sp(**self.__dict__).first_derivative(darray, axis=2)        
         gi = util.trim_dask_array(gi, kernel)
         gj = util.trim_dask_array(gj, kernel)
         gk = util.trim_dask_array(gk, kernel)

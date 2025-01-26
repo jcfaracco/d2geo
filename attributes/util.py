@@ -314,9 +314,9 @@ def local_events(in_data, comparator):
     result &= comparator(trace, minus)
     
     return(result)
-    
-    
-    
+   
+  
+
 def hilbert(in_data):
     """
     Description
@@ -350,3 +350,19 @@ def hilbert(in_data):
         h = h[ind]
     x = np.fft.ifft(Xf * h, axis=-1)
     return x
+
+
+def check_hilbert(f):
+    def wrapper(*args):
+        if not hasattr(args[0], "hilbert_cb"):
+            setattr(args[0], "hilbert_cb", hilbert)
+        return f(*args)
+    return wrapper
+
+
+def check_numpy(f):
+    def wrapper(*args):
+        if not hasattr(args[0], "xp"):
+            setattr(args[0], "xp", np)
+        return f(*args)
+    return wrapper

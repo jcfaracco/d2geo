@@ -37,6 +37,22 @@ class SignalProcess():
     reflection_intensity
     phase_rotation
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Description
+        -----------
+        Constructor of the SignalProcess object
+
+        Parameters
+        ----------
+        args : Array-like, positional parameters in array format
+        kwargs : Dict-like, positional parameters in dict format
+        """
+        if "numpy_backend" in kwargs:
+            self.xp = kwargs["numpy_backend"]
+        if "hilbert_callback" in kwargs:
+            self.hilbert = kwargs["hilbert_callback"]
     
     def create_array(self, darray, kernel, preview):
         """
@@ -83,7 +99,7 @@ class SignalProcess():
         return(darray, chunks_init)
         
     
-    def first_derivative(self, darray, axis=-1, preview=None):
+    def first_derivative(self, darray, axis=-1, kernel=(3,3,3), preview=None):
         """
         Description
         -----------
@@ -96,6 +112,7 @@ class SignalProcess():
         Keywork Arguments
         -----------------  
         axis : Number, axis dimension
+        kernel : tuple (len 3), operator size
         preview : str, enables or disables preview mode and specifies direction
             Acceptable inputs are (None, 'inline', 'xline', 'z')
             Optimizes chunk size in different orientations to facilitate rapid
@@ -106,7 +123,6 @@ class SignalProcess():
         result : Dask Array
         """
         
-        kernel = (3,3,3)
         axes = [ax for ax in range(darray.ndim) if ax != axis]
         darray, chunks_init = self.create_array(darray, kernel, preview=preview)        
         result0 = darray.map_blocks(ndi.correlate1d, weights=[-0.5, 0, 0.5], 
@@ -120,7 +136,7 @@ class SignalProcess():
         return(result)
         
         
-    def second_derivative(self, darray, axis=-1, preview=None):
+    def second_derivative(self, darray, axis=-1, kernel=(5,5,5), preview=None):
         """
         Description
         -----------
@@ -133,6 +149,7 @@ class SignalProcess():
         Keywork Arguments
         -----------------  
         axis : Number, axis dimension
+        kernel : tuple (len 3), operator size
         preview : str, enables or disables preview mode and specifies direction
             Acceptable inputs are (None, 'inline', 'xline', 'z')
             Optimizes chunk size in different orientations to facilitate rapid
@@ -143,7 +160,6 @@ class SignalProcess():
         result : Dask Array
         """
         
-        kernel = (5,5,5)
         axes = [ax for ax in range(darray.ndim) if ax != axis]
         darray, chunks_init = self.create_array(darray, kernel, preview=preview)        
         result0 = darray.map_blocks(ndi.correlate1d, weights=[0.232905, 0.002668, -0.471147, 0.002668, 0.232905], 
@@ -156,7 +172,7 @@ class SignalProcess():
         
         return(result)
         
-    
+    @util.check_numpy
     def histogram_equalization(self, darray, preview=None):
         """
         Description
@@ -182,12 +198,12 @@ class SignalProcess():
         # Function to interpolate seismic to new scaling
         def interp(chunk, cdf, bins):
             
-            out = np.interp(chunk.ravel(), bins, cdf)
+            out = self.xp.interp(chunk.ravel(), bins, cdf)
             
             return(out.reshape(chunk.shape))
         
         darray, chunks_init = self.create_array(darray, preview=preview)        
-        hist, bins = da.histogram(darray, bins=np.linspace(darray.min(), darray.max(), 
+        hist, bins = da.histogram(darray, bins=self.xp.linspace(darray.min(), darray.max(), 
                                                            256, dtype=darray.dtype))
         cdf = hist.cumsum(axis=-1)
         cdf = cdf / cdf[-1]
@@ -260,8 +276,8 @@ class SignalProcess():
         result = da.clip(darray, min_val, max_val)
         
         return(result)
-        
-        
+
+    @util.check_numpy
     def rms(self, darray, kernel=(1,1,9), preview=None):
         """
         Description
@@ -288,7 +304,7 @@ class SignalProcess():
         # Function to extract patches and perform algorithm 
         def operation(chunk, kernel):
             x = util.extract_patches(chunk, kernel)
-            out = np.sqrt(np.mean(x ** 2, axis=(-3, -2, -1)))
+            out = self.xp.sqrt(self.xp.mean(x ** 2, axis=(-3, -2, -1)))
 
             return(out)
         
@@ -330,9 +346,9 @@ class SignalProcess():
         result[da.isnan(result)] = 0 
         
         return(result)
-        
-        
-    def gradient_magnitude(self, darray, sigmas=(1,1,1), preview=None):
+
+    @util.check_numpy
+    def gradient_magnitude(self, darray, sigmas=(1,1,1), kernel=None, preview=None):
         """
         Description
         -----------
@@ -345,6 +361,7 @@ class SignalProcess():
         Keywork Arguments
         -----------------  
         sigmas : tuple (len 3), gaussian operator in I, J, K
+        kernel : tuple (len 3), operator size
         preview : str, enables or disables preview mode and specifies direction
             Acceptable inputs are (None, 'inline', 'xline', 'z')
             Optimizes chunk size in different orientations to facilitate rapid
@@ -355,15 +372,16 @@ class SignalProcess():
         result : Dask Array
         """
         
-        kernel = tuple(2 * (4 * np.array(sigmas) + 0.5).astype(int) + 1)
+        if not kernel:
+            kernel = tuple(2 * (4 * self.xp.array(sigmas) + 0.5).astype(int) + 1)
         darray, chunks_init = self.create_array(darray, kernel, preview=preview)
         result = darray.map_blocks(ndi.gaussian_gradient_magnitude, sigma=sigmas, dtype=darray.dtype)
         result = util.trim_dask_array(result, kernel)
         result[da.isnan(result)] = 0
         
         return(result)
-        
-        
+
+    @util.check_numpy 
     def reflection_intensity(self, darray, kernel=(1,1,9), preview=None):
         """
         Description
@@ -390,7 +408,7 @@ class SignalProcess():
         # Function to extract patches and perform algorithm
         def operation(chunk, kernel):
             x = util.extract_patches(chunk, (1, 1, kernel[-1]))
-            out = np.trapz(x).reshape(x.shape[:3])    
+            out = self.xp.trapz(x).reshape(x.shape[:3])    
             
             return(out)
         
@@ -399,9 +417,9 @@ class SignalProcess():
         result[da.isnan(result)] = 0 
         
         return(result)
-        
-    
-    def phase_rotation(self, darray, rotation, preview=None):
+
+    @util.check_numpy
+    def phase_rotation(self, darray, rotation, kernel=(1,1,25), preview=None):
         """
         Description
         -----------
@@ -424,8 +442,7 @@ class SignalProcess():
         result : Dask Array
         """
         
-        phi = np.deg2rad(rotation)
-        kernel = (1,1,25)
+        phi = self.xp.deg2rad(rotation)
         darray, chunks_init = self.create_array(darray, kernel, preview=preview)
         analytical_trace = darray.map_blocks(signal.hilbert, dtype=darray.dtype)
         result = analytical_trace.real * da.cos(phi) - analytical_trace.imag * da.sin(phi)

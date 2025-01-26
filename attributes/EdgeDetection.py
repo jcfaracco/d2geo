@@ -33,6 +33,20 @@ class EdgeDetection():
     chaos
     volume_curvature
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Description
+        -----------
+        Constructor of the EdgeDetection object
+
+        Parameters
+        ----------
+        args : Array-like, positional parameters in array format
+        kwargs : Dict-like, positional parameters in dict format
+        """
+        if "numpy_backend" in kwargs:
+            self.xp = kwargs["numpy_backend"]
     
     def create_array(self, darray, kernel, preview):
         """
@@ -119,9 +133,7 @@ class EdgeDetection():
         result[da.isnan(result)] = 0 
         
         return(result)
-        
-        
-        
+
     def gradient_structure_tensor(self, darray, kernel=(3,3,9), preview=None):
         """
         Description
@@ -174,9 +186,9 @@ class EdgeDetection():
         darray, chunks_init = self.create_array(darray, kernel, preview)            
         
         # Compute I, J, K gradients
-        gi = sp().first_derivative(darray, axis=0)
-        gj = sp().first_derivative(darray, axis=1)
-        gk = sp().first_derivative(darray, axis=2)
+        gi = sp(**self.__dict__).first_derivative(darray, axis=0)
+        gj = sp(**self.__dict__).first_derivative(darray, axis=1)
+        gk = sp(**self.__dict__).first_derivative(darray, axis=2)
         
         # Compute the Inner Product of the Gradients
         gi2 = (gi * gi).map_blocks(ndi.uniform_filter, size=kernel, dtype=darray.dtype)
@@ -303,9 +315,9 @@ class EdgeDetection():
         darray, chunks_init = self.create_array(darray, kernel, preview)           
         
         # Compute I, J, K gradients
-        gi = sp().first_derivative(darray, axis=0)
-        gj = sp().first_derivative(darray, axis=1)
-        gk = sp().first_derivative(darray, axis=2)
+        gi = sp(**self.__dict__).first_derivative(darray, axis=0)
+        gj = sp(**self.__dict__).first_derivative(darray, axis=1)
+        gk = sp(**self.__dict__).first_derivative(darray, axis=2)
         
         # Compute the Inner Product of the Gradients
         gi2 = (gi * gi).map_blocks(ndi.uniform_filter, size=kernel, dtype=darray.dtype)
@@ -367,12 +379,12 @@ class EdgeDetection():
         w = da.ones_like(u, chunks=u.chunks)
         
         # Compute Gradients
-        ux = sp().first_derivative(u, axis=0)
-        uy = sp().first_derivative(u, axis=1)
-        uz = sp().first_derivative(u, axis=2)
-        vx = sp().first_derivative(v, axis=0)
-        vy = sp().first_derivative(v, axis=1)
-        vz = sp().first_derivative(v, axis=2)
+        ux = sp(**self.__dict__).first_derivative(u, axis=0)
+        uy = sp(**self.__dict__).first_derivative(u, axis=1)
+        uz = sp(**self.__dict__).first_derivative(u, axis=2)
+        vx = sp(**self.__dict__).first_derivative(v, axis=0)
+        vy = sp(**self.__dict__).first_derivative(v, axis=1)
+        vz = sp(**self.__dict__).first_derivative(v, axis=2)
         
         # Smooth Gradients
         ux = ux.map_blocks(ndi.uniform_filter, size=kernel, dtype=ux.dtype)
