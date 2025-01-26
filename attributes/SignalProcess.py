@@ -51,8 +51,8 @@ class SignalProcess():
         """
         if "numpy_backend" in kwargs:
             self.xp = kwargs["numpy_backend"]
-        if "hilbert_callback" in kwargs:
-            self.hilbert = kwargs["hilbert_callback"]
+        if "hilbert_cb" in kwargs:
+            self.hilbert_cb = kwargs["hilbert_cb"]
     
     def create_array(self, darray, kernel, preview):
         """
@@ -418,6 +418,7 @@ class SignalProcess():
         
         return(result)
 
+    @util.check_hilbert
     @util.check_numpy
     def phase_rotation(self, darray, rotation, kernel=(1,1,25), preview=None):
         """
@@ -444,7 +445,7 @@ class SignalProcess():
         
         phi = self.xp.deg2rad(rotation)
         darray, chunks_init = self.create_array(darray, kernel, preview=preview)
-        analytical_trace = darray.map_blocks(signal.hilbert, dtype=darray.dtype)
+        analytical_trace = darray.map_blocks(self.hilbert_cb, dtype=darray.dtype)
         result = analytical_trace.real * da.cos(phi) - analytical_trace.imag * da.sin(phi)
         result = util.trim_dask_array(result, kernel)
         result[da.isnan(result)] = 0
