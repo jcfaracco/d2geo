@@ -57,7 +57,8 @@ class ComplexAttributes():
             self.hilbert_cb = kwargs["hilbert_cb"]
 
     @util.check_numpy
-    def create_array(self, darray, kernel=None, preview=None):
+    def create_array(self, darray, kernel=None, hw=None, boundary='reflect',
+                     preview=None):
         """
         Description
         -----------
@@ -82,24 +83,59 @@ class ComplexAttributes():
         chunk_init : tuple (len 3), chunk size before ghosting.  Used in select cases
         """
         # Compute chunk size and convert if not a Dask Array
-        if not isinstance(darray, da.core.Array):  
-            chunk_size = util.compute_chunk_size(darray.shape, 
-                                               darray.dtype.itemsize, 
-                                               kernel=kernel,
-                                               preview=preview)
+        if not isinstance(darray, da.core.Array):
+            chunk_size = util.compute_chunk_size(darray.shape,
+                                                 darray.dtype.itemsize,
+                                                 kernel=kernel,
+                                                 preview=preview)
             darray = da.from_array(darray, chunks=chunk_size)
-            chunks_init = darray.chunks            
-        else:
-            chunks_init = darray.chunks
 
         # Ghost Dask Array if operation specifies a kernel
-        if kernel != None:
+        if kernel is not None:
+            if hw is None:
                 hw = tuple(np.array(kernel) // 2)
-                darray = da.overlap.overlap(darray, depth=hw, boundary='reflect')
+            if isinstance(boundary, da.core.Array): # if boundary is computed using a dask function
+                boundary = boundary.compute()
+            darray = da.overlap.overlap(darray, depth=hw, boundary=boundary)
 
-        return(darray, chunks_init)
+        chunks_init = darray.chunks
+
+        return (darray, chunks_init)
 
     @util.check_hilbert
+    @util.check_numpy
+    def hilbert(self, darray, kernel=(1,1,25), preview=None):
+        """
+        Description
+        -----------
+        Compute the Hilbert of the input data
+
+        Parameters
+        ----------
+        darray : Array-like, acceptable inputs include Numpy, HDF5, or Dask Arrays
+
+        Keywork Arguments
+        -----------------
+        kernel : tuple (len 3), operator size
+        preview : str, enables or disables preview mode and specifies direction
+            Acceptable inputs are (None, 'inline', 'xline', 'z')
+            Optimizes chunk size in different orientations to facilitate rapid
+            screening of algorithm output
+
+        Returns
+        -------
+        result : Dask Array
+        """
+        darray, chunks_init = self.create_array(darray, kernel, preview=preview)
+        analytical_trace = darray.map_blocks(self.hilbert_cb, dtype=darray.dtype,
+                                             meta=self.xp.array((),
+                                                                dtype=darray.dtype))
+        result = util.trim_dask_array(analytical_trace, kernel)
+
+        return(result)
+
+    @util.check_hilbert
+    @util.check_numpy
     def envelope(self, darray, kernel=(1,1,25), preview=None):
         """
         Description
@@ -123,11 +159,13 @@ class ComplexAttributes():
         result : Dask Array
         """
         darray, chunks_init = self.create_array(darray, kernel, preview=preview)
-        analytical_trace = darray.map_blocks(self.hilbert_cb, dtype=darray.dtype)
+        analytical_trace = darray.map_blocks(self.hilbert_cb, dtype=darray.dtype,
+                                             meta=self.xp.array((),
+                                                                dtype=darray.dtype))
         result = da.absolute(analytical_trace)
         result = util.trim_dask_array(result, kernel)
-        
-        return(result) 
+
+        return(result)
 
     @util.check_hilbert
     def instantaneous_phase(self, darray, kernel=(1,1,25), preview=None):
