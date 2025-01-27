@@ -124,7 +124,7 @@ def compute_chunk_size(shape, byte_size, kernel=None, preview=None):
     
         
         
-def trim_dask_array(in_data, kernel):
+def trim_dask_array(in_data, kernel, hw=None, boundary='reflect'):
     """
     Description
     -----------
@@ -134,6 +134,8 @@ def trim_dask_array(in_data, kernel):
     ----------
     in_data : Dask Array
     kernel : tuple (len 3), operator size
+    hw : Dict, half windows operator
+    boundary : str, type of the boundary
     
     Returns
     -------
@@ -141,10 +143,11 @@ def trim_dask_array(in_data, kernel):
     """
     
     # Compute half windows and assign to dict
-    hw = tuple(np.array(kernel) // 2)    
-    axes = {0 : hw[0], 1 : hw[1], 2: hw[2]}
+    if not hw:
+        hw = tuple(np.array(kernel) // 2)
+    axes = {0: hw[0], 1: hw[1], 2: hw[2]}
     
-    return(da.overlap.trim_internal(in_data, axes=axes))
+    return(da.overlap.trim_internal(in_data, axes=axes, boundary=boundary))
     
     
 
@@ -353,16 +356,16 @@ def hilbert(in_data):
 
 
 def check_hilbert(f):
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         if not hasattr(args[0], "hilbert_cb"):
             setattr(args[0], "hilbert_cb", hilbert)
-        return f(*args)
+        return f(*args, **kwargs)
     return wrapper
 
 
 def check_numpy(f):
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         if not hasattr(args[0], "xp"):
             setattr(args[0], "xp", np)
-        return f(*args)
+        return f(*args, **kwargs)
     return wrapper
