@@ -1,5 +1,9 @@
 # d2geo
-Framework for computing seismic attributes with Python
+Framework for computing seismic attributes with Python.
+
+The only difference from this repository to the original created by @dudley-fitzgerald at [`d2geo`](https://github.com/dudley-fitzgerald/d2geo) is the portability for other data types such as NumPy and CuPy.
+
+This repository also makes this source code more Python friendly for further installation (including lint changes and documentation).
 
 ## Get started
 
