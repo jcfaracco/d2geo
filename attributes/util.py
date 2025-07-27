@@ -141,6 +141,8 @@ def trim_dask_array(in_data, kernel, hw=None, boundary='reflect'):
     -------
     out : Dask Array
     """
+    if not isinstance(darray, da.core.Array):
+        return in_data
     
     # Compute half windows and assign to dict
     if not hw:
